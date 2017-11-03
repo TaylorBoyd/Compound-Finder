@@ -2,13 +2,11 @@
 
 Compound Finder version v1.2.0
 
------------------------------------
 Installation
 -----------------------------------
 
 	- Program comes ready to run just double click the .exe file
 
------------------------------------
 Usage
 -----------------------------------
 
@@ -18,7 +16,6 @@ Usage
 	- Choose a Retention Library to use, then a GCMS file, and they type in what you would like the output file name to be.
 	- For now all outputs will be placed into the same folder as the .exe file
 
------------------------------------
 Version 1.1.0 Changes
 -----------------------------------
 	
@@ -29,7 +26,6 @@ Version 1.1.0 Changes
 	- Added compound percentage feature
 	- Fixed formatting of cells to accomodate long compound names
 
------------------------------------
 Version 1.2.0 Changes
 -----------------------------------
 	
