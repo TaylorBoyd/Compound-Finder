@@ -12,9 +12,8 @@ class window(QMainWindow):
     def __init__(self):
 
         super(window, self).__init__()
-        self.setGeometry(50, 50, 440, 280)
+        self.setGeometry(150, 150, 440, 280)
         self.setWindowTitle("Compound Finder")
-        #self.setWindowIcon(QIcon("pythonlogo.png"))
 
 
 
@@ -97,7 +96,7 @@ class window(QMainWindow):
 
         library_box_value = self.textbox.text()
         file_box_value = self.textbox2.text()
-        output_box = self.textbox3.text()
+        output_box = "{}.xls".format(self.textbox3.text())
         lot = self.textbox4.text()
         generate = False
 
@@ -108,32 +107,22 @@ class window(QMainWindow):
         if library_box_value.find(".csv") == -1 or file_box_value.find(".txt") == -1 or len(output_box) == 0:
             return
 
-        if output_box.find("/") == -1 and output_box.find("\\") == -1:
-
-            compound_list = import_library(library_box_value)
-            file_converter(file_box_value)
-            output_box += ".xls"
-            x = Final_File_Creator(compound_list, output_box, generate, lot)
-
-            # --------------------------------------------------------------
-            # Error handling for lot.
-            # Final file returns False if lot# is not matched
-            # --------------------------------------------------------------
-
-            print(x)
-            if x == False:
-                self.error_window_lot()
+        try:
+            if generate == True and len(lot) == 0:
                 return
 
+            x = main(generate, file_box_value, library_box_value, output_box, lot)
 
+            if x == False:
+                self.error_window_lot()
+                self.textbox4.setText("")
+                return
             self.textbox2.setText("")
             self.textbox3.setText("")
             self.textbox4.setText("")
             return
-
-        else:
-            self.error_window_output()
-            self.textbox3.setText("")
+        except IOError:
+            self.error_window_lib()
             return
 
     def library_text(self):
@@ -142,13 +131,7 @@ class window(QMainWindow):
         selected_filter = "*.csv"
         lib = ""
         lib, _ = QFileDialog.getOpenFileName(self, 'Choose Library',"", filters, selected_filter)
-        if lib.find(".csv") == -1 and len(lib) > 0:
-            self.error_window_lib()
-            return
-        elif lib == "":
-            return
-        else:
-            self.textbox.setText(lib)
+        self.textbox.setText(lib)
 
     def file_text(self):
 
@@ -156,38 +139,18 @@ class window(QMainWindow):
         selected_filter = "*.txt"
         file_name_text = ""
         file_name_text, _ = QFileDialog.getOpenFileName(self, 'Choose Input File', filters, selected_filter)
-        if file_name_text.find(".txt") == -1 and len(file_name_text) > 0:
-            self.error_window_file()
-            return
-        elif file_name_text == "":
-            return
-        else:
-            self.textbox2.setText(file_name_text)
+        self.textbox2.setText(file_name_text)
 
     def error_window_lib(self):
 
         choice = QMessageBox.question(self, 'Error',
-                                      "Please only load .csv files", QMessageBox.Ok)
+                                      "Something Went Wrong!", QMessageBox.Ok)
 
         if choice == QMessageBox.Ok:
             self.textbox.setText("")
-            pass
-
-    def error_window_file(self):
-
-        choice2 = QMessageBox.question(self, 'Error',
-                                       "Please only load .txt files", QMessageBox.Ok)
-
-        if choice2 == QMessageBox.Ok:
             self.textbox2.setText("")
-            return
-
-    def error_window_output(self):
-
-        choice3 = QMessageBox.question(self, 'Error',
-                                      "File name cannot contain slashes", QMessageBox.Ok)
-
-        if choice3 == QMessageBox.Ok:
+            self.textbox3.setText("")
+            self.textbox4.setText("")
             pass
 
     def error_window_lot(self):

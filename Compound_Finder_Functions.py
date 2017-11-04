@@ -1,203 +1,150 @@
 import csv
 import xlwt
 from CofA_Functions import *
+from operator import itemgetter
 
-epsilon = 0.1
 libe = "RetentionTimeLibrary.csv"
 inputfile = "test.txt"
 
-def file_converter(inputfile):
 
-    # Converts txt file from the GCMS directly into a .csv file to be used by the program.
-    # This is done through a temp.csv file which is then later turned in to the file form.
-    # Temp file was used to avoid read/write errors when working on the same file.
+def import_gcms(gcms_file):
 
-    #inputfile = (input("Please type the file name you want to use: "))+".txt"
-    skip_line = 4
-    new_rows = []
-
-    with open(inputfile) as original_file, open("temp.csv", 'w', newline='') as output_file:
-        writer = csv.writer(output_file, lineterminator="\n")
+    with open(gcms_file) as original_file:
+        skip_line = 4
+        peak_list = []
         for row in original_file:
 
-            if skip_line > 0 or row == ["[]"]:
+            if skip_line > 0 or len(row.split()) == 0:
                 skip_line -= 1
             else:
-                if len(row.split()) > 0:
-                    new_rows = row.split()
-                    writer.writerow(new_rows)
-                else:
-                    pass
+                peak_list.append(row.split())
 
-        print("File Successfully Converted!")
-    return
+    return peak_list
+
 
 def import_library(library):
 
-    # Imports the library from RetentionTimeLibrary.csv
-    # Library should only be filled with strings and floats
-    # Converts this file to a dict for easy use [float -> str]
-
-    compound_list = {}
+    compound_list = []
 
     with open(library) as csvfile:
-        reader = csv.DictReader(csvfile)
+        reader = csv.reader(csvfile, delimiter=",")
+        skip_row = 1
+
         for row in reader:
-            if row['Retention Time'] != '':
-                fixed = row['Retention Time'].replace('*', "")
-                compound_list[float(fixed)] = row['Compound Name']
+            temp_row = []
 
-        print(len(compound_list), "Compounds Loaded!")
+            if skip_row > 0:
+                skip_row -= 1
+            elif len(row[0]) == 0 or len(row[1]) == 0:
+                pass
+            else:
+                for column in range(3):
+                    temp_row.append(row[column].replace("*", ""))
 
-    return compound_list\
+                compound_list.append(temp_row)
 
-def worksheet1_list():
+    return compound_list
 
-    #takes the temp CSV and converts it to a first pass formatting in a list of lists to be used later
-    #Rest of the data is placed on worksheet2 list
 
-    with open("temp.csv") as tempfile:
-        reader = csv.reader(tempfile, delimiter=",")
+def ws1_list(peak_list):
 
-        ws1_list = []
-        for row in reader:
-            current_row = ["", "", "", "", "", "", "", ""]
-            list_column = len(row)
+        worksheet_list = []
 
-            current_row[0] = row[0]
-            current_row[3] = round(float(row[1]), 3)
-            current_row[4] = int(row[4])
+        for i in peak_list:
 
-            ws1_list.append(current_row)
+            temp_list = list()
+            temp_list.append(int(i[0]))                     # 0 Peak Number
+            temp_list.append("")                            # 1 Guess 1
+            temp_list.append("")                            # 2 Area Percentage
+            temp_list.append(round(float(i[1]), 3))         # 3 Retention Time
+            temp_list.append(int(i[4]))                     # 4 Area
+            temp_list.append("")                            # 5 Guess 2
+            temp_list.append("")                            # 6 Guess 3
+            temp_list.append("")                            # 7 Guess 4
 
-        return ws1_list
+            worksheet_list.append(temp_list)
 
-def compound_percentage(worksheet_list):
+        return worksheet_list
 
-    #Outputs a list of the compound percentages to be used later.
-    #[[list]] -> [[list]]
+
+def ws2_list(peak_list):
+    worksheet2_list = []
+
+    for i in peak_list:
+        temp_list = list()
+        temp_list.append(int(i[0]))              # 0 Peak Number
+        temp_list.append(i[2])                   # 1 Type
+        temp_list.append(round(float(i[3]), 3))  # 2 Width
+        temp_list.append(round(float(i[5]), 3))  # 3 Start Time
+        temp_list.append(round(float(i[6]), 3))  # 4 End Time
+
+        worksheet2_list.append(temp_list)
+
+    return worksheet2_list
+
+
+def compound_percentage(worksheet1):
+
     total = 0
-    temp_list = worksheet_list
 
-    for i in temp_list:
+    for i in worksheet1:
         total += int(i[4])
 
-
-    for i in temp_list:
+    for i in worksheet1:
         i[2] = str(round(((int(i[4])/total)*100), 2)) + "%"
 
-    return temp_list
-
-def guess_builder(compounds, worksheet_list):
-
-    #Builds a list of compound guesses in ascending order of distance from retention library
-    #{dict} -> [list]
-
-    temp_list = worksheet_list
-
-    for i in temp_list:
-
-        unorganized_rows = {}
-
-        for key in compounds:
-            x = (key) - float(i[3])
-
-            if abs(x) <= epsilon:
-                unorganized_rows[abs(round(x, 3))] = (compounds[key] + "(" + str(round(x, 3)) + ")")
-
-        organized_row = row_organizer(unorganized_rows)
-
-        max_guess = 4
-        guess_index = len(organized_row)
-
-        if guess_index > 0:
-
-            for j in range(guess_index):
-                if max_guess == 0:
-                    return
-
-                elif j == 0:
-                    i[1] = organized_row[j]
-                    max_guess -= 1
-                else:
-                    i[j+4] = organized_row[j]
-                    max_guess -= 1
-        else:
-            i[1] = blank_guesser(compounds, float(i[3]))
+    return worksheet1
 
 
-    return temp_list
+def guess_builder(compound_list, ws1):
+
+    epsilon = 0.1
+    for i in ws1:
+
+        unorganized_list = []
+        blank_guess = []
+        best_guess = 10.0
+        ret_time = i[3]
+        for compound in compound_list:
+
+            ret_diff = round(float(ret_time) - float(compound[1]), 3)
+            if abs(ret_diff) <= epsilon:
+                unorganized_list.append(["{}({})".format(compound[0], str(ret_diff)), abs(ret_diff)])
+            elif abs(ret_diff) < best_guess:
+                best_guess = abs(ret_diff)
+                blank_guess = ["(??){}({})".format(compound[0], str(ret_diff)), abs(ret_diff)]
+
+        if len(unorganized_list) == 0:
+            unorganized_list.append(blank_guess)
+
+        organized_list = sorted(unorganized_list, key=itemgetter(1))
+
+        try:
+            i[1] = organized_list[0][0]
+            i[5] = organized_list[1][0]
+            i[6] = organized_list[2][0]
+            i[7] = organized_list[3][0]
+        except IndexError:
+            pass
+
+    return ws1
 
 
-def row_organizer(unorg_row):
+def final_file_creator(worksheet1, worksheet2, generate, lot, output_name):
 
-    #[dict -> string]
-    #Organizes in descending order of difference from Retention Time library values
-
-    organized_row = []
-    sorted_keys = []
-
-    for key in unorg_row:
-        sorted_keys.append(key)
-
-    sorted_keys.sort()
-    for i in sorted_keys:
-        organized_row.append(unorg_row[i])
-
-    return organized_row
-
-def blank_guesser(compounds, retention_number):
-
-    #Fills in blanks by picking the closest guess
-    #Appends (??) to the front to denote a large guess
-
-    best_guess = ""
-    lowest = 2.0
-
-    for key in compounds:
-        x = (key) - float(retention_number)
-
-        if abs(x) <= lowest:
-            lowest = abs(x)
-            best_guess = ("(??)" + compounds[key] + "(" + str(round(x, 3)) + ")")
-
-    return best_guess
-
-def worksheet2_list():
-
-    #takes the temp CSV and converts it to a first pass formatting in a list of lists to be used later
-    #Rest of the data is placed on worksheet2 list
-
-    with open("temp.csv") as tempfile:
-        reader = csv.reader(tempfile, delimiter=",")
-        ws2_list = [["Peak", "Type", "Width", "Start Time", "End Time"]]
-        for row in reader:
-            temp_list = ["", "", "", "", ""]
-            temp_list[0] = row[0]
-            temp_list[1] = row[2]
-            temp_list[2] = round(float(row[3]), 3)
-            temp_list[3] = round(float(row[5]), 3)
-            temp_list[4] = round(float(row[6]), 3)
-            ws2_list.append(temp_list)
-
-        return ws2_list
-
-def Final_File_Creator(compounds, outputName, generate, lot):
-
-    worksheet1 = worksheet1_list()
-    worksheet2 = worksheet2_list()
-
-    worksheet1 = compound_percentage(worksheet1)
-    worksheet1 = guess_builder(compounds, worksheet1)
 
     wb = xlwt.Workbook()
     ws = wb.add_sheet("Compound info")
     ws2 = wb.add_sheet("Additional info")
 
+    # --------------------------------------------------------------
+    # Generates Worksheet1 - Main information
+    # --------------------------------------------------------------
+
     Titles = ["Peak", "Guess 1", "Percentage", "Ret Time", "Area", "Guess 2", "Guess 3", "Guess 4"]
     column = 0
     for i in Titles:
-        ws.write(0, column, i, xlwt.easyxf("align: horiz center"))
+        ws.write(0, column, i, xlwt.easyxf("align: horiz center; font: bold on; borders: bottom thin"))
         column += 1
 
     columns = len(worksheet1[0])
@@ -205,29 +152,38 @@ def Final_File_Creator(compounds, outputName, generate, lot):
     for i in range(columns):
         for j in range(rows):
             x = (worksheet1[j][i])
-            ws.write(j+1, i, x)
+            ws.write(j+2, i, x)
 
+    ws.col(1).width = 256 * 30
+    ws.col(2).width = 256 * 13
+    ws.col(4).width = 256 * 13
+    ws.col(5).width = 256 * 30
+    ws.col(6).width = 256 * 30
+    ws.col(7).width = 256 * 30
+
+    # --------------------------------------------------------------
+    # Generates Worksheet2 - Additional Info
+    # --------------------------------------------------------------
+
+    Titles = ["Peak", "Type", "Width", "Start Time", "End Time"]
+    column = 0
+    for i in Titles:
+        ws2.write(0, column, i, xlwt.easyxf("align: horiz center; font: bold on; borders: bottom thin"))
+        column += 1
 
     columns = len(worksheet2[0])
     rows = len(worksheet2)
     for i in range(columns):
         for j in range(rows):
             x = (worksheet2[j][i])
-            ws2.write(j, i, x)
-
-    ws.col(1).width = 256*30
-    ws.col(2).width = 256*13
-    ws.col(4).width = 256 * 13
-    ws.col(5).width = 256*30
-    ws.col(6).width = 256*30
-    ws.col(7).width = 256*30
+            ws2.write(j+2, i, x)
 
     # --------------------------------------------------------------
     # Leaves function if not told to generate CofA part
     # --------------------------------------------------------------
 
     if generate == False:
-        wb.save(outputName)
+        wb.save(output_name)
         return
 
     # --------------------------------------------------------------
@@ -243,27 +199,49 @@ def Final_File_Creator(compounds, outputName, generate, lot):
         return False
 
 
-    columns = len(cofa[0])
-    rows = len(cofa)
-    for i in range(columns):
-        for j in range(rows):
+    style_main_string = "font: name Calibri; align: horiz left; font: height 200; borders: bottom thin; borders: top thin; borders: left thin; borders: right thin"
+    style_top_string = "font: name Calibri; align: horiz left; font: height 320; font: bold on"
+    style_info_string = "font: name Calibri; align: horiz left; font: height 220; font: bold on"
+
+    ws3.write(0, 1, cofa[0][1], xlwt.easyxf(style_top_string))
+    ws3.write(1, 0, cofa[1][0], xlwt.easyxf(style_info_string))
+    ws3.write(2, 0, cofa[2][0], xlwt.easyxf(style_info_string))
+    ws3.write(3, 0, cofa[3][0], xlwt.easyxf(style_info_string))
+    ws3.write(1, 1, cofa[1][1], xlwt.easyxf("font: name Calibri; align: horiz left; font: height 200; font: italic on"))
+
+    for i in range(0, 2):
+        for j in range(5, 10):
             x = (cofa[j][i])
-            ws3.write(j, i, x, xlwt.easyxf("align: horiz right", num_format_str="#,##0.00"))
+            ws3.write(j, i, x, xlwt.easyxf(style_main_string, num_format_str="#,##0.00"))
 
-    ws3.col(0).width = 256 * 21
+    for i in range(0, 3):
+        for j in range(11, 15):
+            x = (cofa[j][i])
+            ws3.write(j, i, x, xlwt.easyxf(style_main_string, num_format_str="#,##0.00"))
+
+    for i in range(0, 3):
+        for j in range(16, 21):
+            x = (cofa[j][i])
+            ws3.write(j, i, x, xlwt.easyxf(style_main_string, num_format_str="#,##0.00"))
+
+    ws3.col(0).width = 256 * 36
     ws3.col(1).width = 256 * 30
-    ws3.col(2).width = 256 * 9
+    ws3.col(2).width = 256 * 39
 
-    wb.save(outputName)
+    wb.save(output_name)
 
     return
 
 
+def main(generate_cofa, inputfile, library, output_name, lot_num):
 
-#compound_list = import_library(libe)
-#file_converter(inputfile)
-#Final_File_Creator(compound_list, "Testeroni2.xls")
-
+    peak_list = import_gcms(inputfile)
+    compound_list = import_library(library)
+    ws1 = ws1_list(peak_list)
+    ws2 = ws2_list(peak_list)
+    compound_percentage(ws1)
+    guess_builder(compound_list, ws1)
+    return final_file_creator(ws1, ws2, generate_cofa, lot_num, output_name)
 
 
 

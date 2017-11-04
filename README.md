@@ -32,4 +32,15 @@ Version 1.2.0 Changes
 	- Added functionality to pull info off the Rumplestilskin file and add it to a template CofA tab
 	- When the box is checked it pulls info off Rumplestilskin based off the user specified lot number and places it in a template on the third tab.
 	- IMPORTANT: Make sure the file name for Rumplestilskin is not changed
-	- IMPORTANT: Feel free to add more infor to the Rumplestilskin file at any time. Just make sure the END tag at the end of the file is still there and the new info is place above it. The program will still work without the END but it will go through the entire 60k rows of the excel file. Any info placed AFTER the END will not be looked at.
+	- IMPORTANT: Feel free to add more infor to the Rumplestilskin file at any time. Just make sure the END tag at the end of the file is still there and the new info is place above it. The program will still work without the END but it will go through the entire 65k rows of the excel file. Any info placed AFTER the END will not be looked at.
+
+Version 1.2.1 Changes
+-----------------------------------
+
+	- Rewrote program to have better scalability for future additions
+	- Improved list making readability for future code additions
+	- Removed some complicated functions and condensed the guesser function down to be much less complicated and do all the guesses (including blank guesses) in one shot.
+	- No longer creates a "temp.csv" file as a mid point between input and output
+	- Program takes the retention library in as a 2 dimensional list instead of a dictionary. Now any future additions to the retention time library can be used without changing anything. 
+	- Improved some of the error handling. Though it still needs work to be more specific to the user
+	- Signigicantly improved formatting on the Certificate of Analysis tab
