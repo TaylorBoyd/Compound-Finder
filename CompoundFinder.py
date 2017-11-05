@@ -2,7 +2,7 @@ import sys
 from Compound_Finder_Functions import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QPushButton, QAction, QFileDialog, QLineEdit, QMessageBox, QLabel, QCheckBox
-from PyQt5.QtGui import *
+from CofA_Functions import *
 
 library_imported = False
 
@@ -107,16 +107,24 @@ class window(QMainWindow):
         if library_box_value.find(".csv") == -1 or file_box_value.find(".txt") == -1 or len(output_box) == 0:
             return
 
-        try:
-            if generate == True and len(lot) == 0:
+        cofa = []
+        if generate and len(lot) == 0:
+            return
+        elif generate and len(lot) != 0:
+
+            cofa = CofA_format_builder()
+            cofa = CofA_Static_additions(cofa)
+            cofa = CofA_variable_additions(cofa, lot)
+
+            if cofa == "Missing":
+                self.rumple_missing()
                 return
-
-            x = main(generate, file_box_value, library_box_value, output_box, lot)
-
-            if x == False:
+            elif cofa == "Doesn't Exist":
                 self.error_window_lot()
-                self.textbox4.setText("")
                 return
+        try:
+            main(generate, file_box_value, library_box_value, output_box, cofa)
+
             self.textbox2.setText("")
             self.textbox3.setText("")
             self.textbox4.setText("")
@@ -144,7 +152,7 @@ class window(QMainWindow):
     def error_window_lib(self):
 
         choice = QMessageBox.question(self, 'Error',
-                                      "Something Went Wrong!", QMessageBox.Ok)
+                                      "Invalid File Path", QMessageBox.Ok)
 
         if choice == QMessageBox.Ok:
             self.textbox.setText("")
@@ -159,6 +167,14 @@ class window(QMainWindow):
                                       "That Lot# doesn't exist", QMessageBox.Ok)
 
         if choice4 == QMessageBox.Ok:
+            pass
+
+    def rumple_missing(self):
+
+        choice5 = QMessageBox.question(self, 'Error',
+                                      "Rumplestilskin.xls is missing!", QMessageBox.Ok)
+
+        if choice5 == QMessageBox.Ok:
             pass
 
     def checkbox(self, state):
