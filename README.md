@@ -44,3 +44,4 @@ Version 1.2.1 Changes
 	- Program takes the retention library in as a 2 dimensional list instead of a dictionary. Now any future additions to the retention time library can be used without changing anything. 
 	- Improved some of the error handling. Though it still needs work to be more specific to the user
 	- Signigicantly improved formatting on the Certificate of Analysis tab
+	- Changed order of operation for going through and creating the work sheet lists. Now if you are generating a CofA and you enter a lot# that doesn't exist, it checks that step first instead of generating everything else in order to save time if it is missing.
